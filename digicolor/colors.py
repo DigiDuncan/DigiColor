@@ -273,12 +273,23 @@ def sanitizeName(n: str):
 
 
 class Color:
+    """
+    An object representing a color.
+    """
     colors_by_name = dict()
     colors_by_id = dict()
 
     def __init__(self, colorid: int, name: str, value: int):
-        self.colorid = colorid
-        self.name = sanitizeName(name)
+        """
+        Create a Color object and add it to the global registry of colors.
+
+        Example:
+        > Color(colorid = 256, name = "RED", value = 0xFF0000)
+
+        colorid and name must be unique for each Color.
+        """
+        self._colorid = colorid
+        self._name = sanitizeName(name)
         self._value = value
 
         if self.colorid in self.colors_by_id:
@@ -295,10 +306,16 @@ class Color:
 
     @property
     def rgb(self):
+        """
+        Return a 3-Tuple representing the R, G, and B values of the Color respectively, values 0-255 inclusive.
+        """
         return hexToTuple(self.value)
 
     @property
     def prettyName(self):
+        """
+        Returns a String that is the colors name value, but formatted to look nice in output.
+        """
         name = self.name
         name = name.replace("_", " ").title()
         match = re.search(name, r"(.*)(\d.*)")
@@ -306,19 +323,33 @@ class Color:
             name = match.group(1) + " " + match.group(2).upper()
         return name
 
-    def remove(self):
-        del self.colors_by_id[self.colorid]
-        del self.colors_by_name[self.name]
-
     @property
     def value(self):
+        """
+        Returns an int representing the value of this Color, between 0x000000 and 0xFFFFFF, inclusive.
+        """
         return self._value
 
-    @value.setter
-    def value(self, newvalue):
-        if not 0x0 <= newvalue <= 0xFFFFFF:
-            raise ValueError("Color value must be a 6-digit hex value.")
-        self._value = newvalue
+    @property
+    def name(self):
+        """
+        Returns the canonical name of this Color.
+        """
+        return self._name
+
+    @property
+    def id(self):
+        """
+        Returns the canonical ID of this Color.
+        """
+        return self._colorid
+
+    def remove(self):
+        """
+        Removes a color from the global registry of colors.
+        """
+        del self.colors_by_id[self.colorid]
+        del self.colors_by_name[self.name]
 
     def __str__(self):
         return self.name
@@ -334,10 +365,16 @@ class Color:
 
     @classmethod
     def fromID(cls, colorid: int):
+        """
+        Return a Color based on its canonical ID in the global registry of colors.
+        """
         return cls.colors_by_id[colorid]
 
     @classmethod
     def fromName(cls, name: str):
+        """
+        Return a Color based on its canonical name in the global registry of colors.
+        """
         return cls.colors_by_name[name]
 
 
@@ -348,4 +385,7 @@ def loadDefaultColors():
     return AttrDict(Color.colors_by_name)
 
 
+"""
+Is an AttrDict of a default, 256-color pattlete (based on https://jonasjacek.github.io/colors/)
+"""
 colors = loadDefaultColors()
