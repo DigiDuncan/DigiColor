@@ -276,8 +276,9 @@ class Color:
     """
     An object representing a color.
     """
-    colors_by_name = dict()
-    colors_by_id = dict()
+    _colors_by_name = dict()
+    _colors_by_id = dict()
+    registry = []
 
     def __init__(self, colorid: int, name: str, value: int):
         """
@@ -292,17 +293,18 @@ class Color:
         self._name = sanitizeName(name)
         self._value = value
 
-        if self.colorid in self.colors_by_id:
+        if self.colorid in self._colors_by_id:
             raise ValueError(f"Color ID ({self.colorid}) already in use.")
 
-        if self.name in self.colors_by_name:
+        if self.name in self._colors_by_name:
             raise ValueError(f"Color name ({self.name}) already in use.")
 
         if not 0x0 <= self.value <= 0xFFFFFF:
             raise ValueError("Color value must be a 6-digit hex value.")
 
-        self.colors_by_name[name] = self
-        self.colors_by_id[colorid] = self
+        self._colors_by_name[name] = self
+        self._colors_by_id[colorid] = self
+        self.registry.append(self)
 
     @property
     def rgb(self):
@@ -338,7 +340,7 @@ class Color:
         return self._name
 
     @property
-    def id(self):
+    def colorid(self):
         """
         Returns the canonical ID of this Color.
         """
@@ -348,8 +350,9 @@ class Color:
         """
         Removes a color from the global registry of colors.
         """
-        del self.colors_by_id[self.colorid]
-        del self.colors_by_name[self.name]
+        del self._colors_by_id[self.colorid]
+        del self._colors_by_name[self.name]
+        self.registry.remove(self)
 
     def __str__(self):
         return self.name
@@ -368,21 +371,21 @@ class Color:
         """
         Return a Color based on its canonical ID in the global registry of colors.
         """
-        return cls.colors_by_id[colorid]
+        return cls._colors_by_id[colorid]
 
     @classmethod
     def fromName(cls, name: str):
         """
         Return a Color based on its canonical name in the global registry of colors.
         """
-        return cls.colors_by_name[name]
+        return cls._colors_by_name[sanitizeName(name)]
 
 
 def loadDefaultColors():
     for colorid, (name, value) in enumerate(default_colors.items()):
         Color(colorid, name, value)
 
-    return AttrDict(Color.colors_by_name)
+    return AttrDict(Color._colors_by_name)
 
 
 """
