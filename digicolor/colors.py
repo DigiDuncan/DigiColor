@@ -1,4 +1,5 @@
 import re
+from math import sqrt
 
 from digicolor.lib.utils import AttrDict
 
@@ -262,10 +263,44 @@ default_colors = {
 }
 
 
-def hexToTuple(h: int):
-    if not 0x0 <= h <= 0xFFFFFF:
-        raise ValueError("Input must be a 6-digit hex value.")
-    return (h >> 16) & 0xFF, (h >> 8) & 0xFF, h & 0xFF
+def hexToInt(h: str):
+    if h.startswith("#"):
+        if not 0x0 <= int(h[1:], 16) <= 0xFFFFFF:
+            raise ValueError("Color value must be a 6-digit hex value.")
+        return int(h[1:], 16)
+    else:
+        if not 0x0 <= int(h, 16) <= 0xFFFFFF:
+            raise ValueError("Color value must be a 6-digit hex value.")
+        return int(h, 16)
+
+
+def tupleToInt(t: tuple):
+    if len(t) != 3:
+        raise ValueError("Color tuple must be a 3-tuple.")
+    for val in t:
+        if not 0 <= val <= 255:
+            raise ValueError("Color tuple R, G, and B values must be between 0 and 255, inclusive.")
+    return val[0] << 16 + val[1] << 8 + val[2]
+
+
+def intToTuple(i: int):
+    if not 0x0 <= i <= 0xFFFFFF:
+        raise ValueError("Color value be a 6-digit hex value.")
+    return (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF
+
+
+def hexToTuple(h: str):
+    return intToTuple(hexToInt(h))
+
+
+def intToHex(i: int):
+    if not 0x0 <= i <= 0xFFFFFF:
+        raise ValueError("Color value must be a 6-digit hex value.")
+    return hex(i)
+
+
+def tupleToHex(t: tuple):
+    return intToHex(tupleToInt(t))
 
 
 def sanitizeName(n: str):
@@ -285,7 +320,8 @@ class Color:
         Create a Color object and add it to the global registry of colors.
 
         Example:
-        > Color(colorid = 256, name = "RED", value = 0xFF0000)
+        >>> Color(colorid = 256, name = "RED", value = 0xFF0000)
+        Color(colorid = 256, name = 'AWESOME', value = 0x0fcdf7)
 
         colorid and name must be unique for each Color.
         """
@@ -310,13 +346,21 @@ class Color:
     def rgb(self):
         """
         Return a 3-Tuple representing the R, G, and B values of the Color respectively, values 0-255 inclusive.
+
+        Example:
+        >>> mycolor.rgb()
+        (15, 205, 247)
         """
-        return hexToTuple(self.value)
+        return intToTuple(self.value)
 
     @property
     def prettyName(self):
         """
         Returns a String that is the colors name value, but formatted to look nice in output.
+
+        Example:
+        >>> mycolor.prettyName()
+        'Awesome'
         """
         name = self.name
         name = name.replace("_", " ").title()
@@ -329,6 +373,10 @@ class Color:
     def value(self):
         """
         Returns an int representing the value of this Color, between 0x000000 and 0xFFFFFF, inclusive.
+
+        Example:
+        >>> mycolor.value()
+        1035767
         """
         return self._value
 
@@ -336,6 +384,10 @@ class Color:
     def name(self):
         """
         Returns the canonical name of this Color.
+
+        Example:
+        >>> mycolor.name
+        'AWESOME'
         """
         return self._name
 
@@ -343,12 +395,19 @@ class Color:
     def colorid(self):
         """
         Returns the canonical ID of this Color.
+
+        Example:
+        >>> mycolor.colorid
+        256
         """
         return self._colorid
 
     def remove(self):
         """
         Removes a color from the global registry of colors.
+
+        Example:
+        >>> mycolor.remove()
         """
         del self._colors_by_id[self.colorid]
         del self._colors_by_name[self.name]
@@ -364,12 +423,17 @@ class Color:
         return hex(self.value)
 
     def __repr__(self):
-        return (f"Color(colorid = {self.colorid}, name = {self.name!r}, value = {hex(self.value)})")
+        goodhex = '0x' + hex(self.value)[2:].zfill(6)
+        return (f"Color(colorid = {self.colorid}, name = {self.name!r}, value = {goodhex})")
 
     @classmethod
     def fromID(cls, colorid: int):
         """
         Return a Color based on its canonical ID in the global registry of colors.
+
+        Example:
+        >>> Color.fromID(1)
+        Color(colorid = 1, name = 'RED', value = 0x800000)
         """
         return cls._colors_by_id[colorid]
 
@@ -377,8 +441,61 @@ class Color:
     def fromName(cls, name: str):
         """
         Return a Color based on its canonical name in the global registry of colors.
+
+        Example:
+        >>> Color.fromName("RED")
+        Color(colorid = 1, name = 'RED', value = 0x800000)
         """
         return cls._colors_by_name[sanitizeName(name)]
+
+    @classmethod
+    def toColorInt(cls, color):
+        """
+        Takes a variety yof input types and turns them into the color value of the colors RGB.
+
+        Examples:
+        >>> toColorInt(0xFFFFFF)
+        16777215
+        >>> toColorInt("FFFFFF")
+        16777215
+        >>> toColorInt((255, 255, 255))
+        16777215
+        >>> toColorInt(Color(256, "WHITE", 0xFFFFFF))
+        16777215
+        """
+        if isinstance(color, int):
+            if not 0x0 <= color <= 0xFFFFFF:
+                raise ValueError("Color value must be a 6-digit hex value.")
+            return color
+        if isinstance(color, str):
+            return hexToInt(color)
+        if isinstance(color, tuple):
+            return tupleToInt(color)
+        if isinstance(color, Color):
+            return color.value
+        return ValueError("Color type could not be identified.")
+
+    @classmethod
+    def getClosestColor(cls, color):
+        """
+        Find the closest color in the registry to the one given.
+        Uses the algorithm found at https://stackoverflow.com/a/54242348.
+
+        Examples:
+        >>> Color.getClosestColor(0x00AA00)
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        >>> Color.getClosestColor("00AA00")
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        >>> Color.getClosestColor((0, 170, 0))
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        """
+        r, g, b = intToTuple(cls.toColorInt(color))
+        color_diffs = []
+        for matchcolor in cls.registry:
+            cr, cg, cb = matchcolor.rgb
+            color_diff = sqrt(abs(r - cr)**2 + abs(g - cg)**2 + abs(b - cb)**2)
+            color_diffs.append((color_diff, matchcolor))
+        return min(color_diffs)[1]
 
 
 def loadDefaultColors():
@@ -390,5 +507,10 @@ def loadDefaultColors():
 
 """
 Is an AttrDict of a default, 256-color pattlete (based on https://jonasjacek.github.io/colors/)
+Because it's an AttrDict, this means you can do things like `colors.RED` and it will return the Color object for the default RED color.
 """
 colors = loadDefaultColors()
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod(extraglobs={'mycolor': Color(colorid = 256, name = "AWESOME", value = 0x0fcdf7)})
