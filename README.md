@@ -63,3 +63,24 @@ And remove colors from the global registry:
 ```python
 >>> awesomecolor.remove()
 ```
+
+You can even get the closest approximation to a given color that your registry has:
+
+```python
+>>> Color.getClosestColor(0x00AA00)
+```
+```python
+Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+```
+```python
+>>> Color.getClosestColor("00AA00")
+```
+```python
+Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+```
+```python
+>>> Color.getClosestColor((0, 170, 0))
+```
+```python
+Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+```
