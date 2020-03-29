@@ -5,6 +5,9 @@ Makes working with colors a bit nicer.
 
 ```python
 >>> from digicolor import colors
+```
+
+```python
 >>> colors.RED
 ```
 ```python
@@ -14,22 +17,21 @@ Color(colorid = 1, name = "RED", value = 0x800000)
 You can also "search" the global registry of colors by ID or name:
 
 ```python
->>> from digicolor import Color
->>> Color.fromID(2)
+>>> colors.fromID(2)
 ```
 ```python
 Color(colorid = 2, name = "GREEN", value = 0x008000)
 ```
 ```python
->>> Color.fromName("BLUE")
+>>> colors.fromName("BLUE")
 ```
 ```python
 Color(colorid = 4, name = "BLUE", value = 0x000080)
 ```
 
-You can look at the entire registry by accessing `Color.registry`...
+You can look at the entire registry by accessing `colors.registry`...
 ```python
->>> print(Color.registry)
+>>> print(colors.registry)
 ```
 ```python
 [Color(colorid = 0, name = 'BLACK', value = 0x0), Color(colorid = 1, name = 'RED', value = 0x800000), Color(colorid = 2, name = 'GREEN', value = 0x8000), ...
@@ -39,7 +41,7 @@ You can look at the entire registry by accessing `Color.registry`...
 You can create your own colors by constructing one!
 
 ```python
->>> awesomecolor = Color(colorid = 256, name = "AWESOME", value = 0x0fcdf7)
+>>> awesomecolor = colors.add(colorid = 256, name = "AWESOME", value = 0x0fcdf7)
 
 >>> print(f"""Awesome Color
 ... ID: {awesomecolor.colorid}
@@ -67,19 +69,19 @@ And remove colors from the global registry:
 You can even get the closest approximation to a given color that your registry has:
 
 ```python
->>> Color.getClosestColor(0x00AA00)
+>>> colors.getClosestColor(0x00AA00)
 ```
 ```python
 Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
 ```
 ```python
->>> Color.getClosestColor("00AA00")
+>>> colors.getClosestColor("00AA00")
 ```
 ```python
 Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
 ```
 ```python
->>> Color.getClosestColor((0, 170, 0))
+>>> colors.getClosestColor((0, 170, 0))
 ```
 ```python
 Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
