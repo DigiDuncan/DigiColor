@@ -264,46 +264,107 @@ default_colors = {
 
 
 def hexToInt(h: str):
+    """
+    Convert a color hex to a color int
+
+    >>> hexToInt("0x0FCDF7")
+    1035767
+    >>> hexToInt("#44E635")
+    4515381
+    >>> hexToInt("F5910F")
+    16093455
+    """
     if h.startswith("#"):
-        if not 0x0 <= int(h[1:], 16) <= 0xFFFFFF:
-            raise ValueError("Color value must be a 6-digit hex value.")
-        return int(h[1:], 16)
-    else:
-        if not 0x0 <= int(h, 16) <= 0xFFFFFF:
-            raise ValueError("Color value must be a 6-digit hex value.")
-        return int(h, 16)
+        h = h[1:]
+    val = int(h, 16)
+    if not 0x0 <= val <= 0xFFFFFF:
+        raise ValueError("Color value must be a 6-digit hex value.")
+    return val
 
 
 def tupleToInt(t: tuple):
+    """
+    Convert a color tuple to a color int
+
+    >>> tupleToInt((0x0F, 0xCD, 0xF7))
+    1035767
+    >>> tupleToInt((68, 230, 53))
+    4515381
+    """
     if len(t) != 3:
         raise ValueError("Color tuple must be a 3-tuple.")
-    for val in t:
-        if not 0 <= val <= 255:
-            raise ValueError("Color tuple R, G, and B values must be between 0 and 255, inclusive.")
-    return val[0] << 16 + val[1] << 8 + val[2]
+    r, g, b = t
+    if not (0x0 <= r <= 0xFF and 0x0 <= g <= 0xFF and 0x0 <= b <= 0xFF):
+        raise ValueError("Color tuple R, G, and B values must be between 0 and 255, inclusive.")
+    return r << 16 | g << 8 | b
 
 
 def intToTuple(i: int):
+    """
+    Convert a color int to a color tuple
+
+    >>> intToTuple(0x0FCDF7)
+    (15, 205, 247)
+    >>> intToTuple(4515381)
+    (68, 230, 53)
+    """
     if not 0x0 <= i <= 0xFFFFFF:
         raise ValueError("Color value be a 6-digit hex value.")
-    return (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF
+    r, g, b = (i >> 16) & 0xFF, (i >> 8) & 0xFF, i & 0xFF
+    return r, g, b
 
 
 def hexToTuple(h: str):
+    """
+    Convert a color hex to a color tuple
+
+    >>> hexToTuple("0x0FCDF7")
+    (15, 205, 247)
+    >>> hexToTuple("#44E635")
+    (68, 230, 53)
+    >>> hexToTuple("F5910F")
+    (245, 145, 15)
+    """
     return intToTuple(hexToInt(h))
 
 
 def intToHex(i: int):
+    """
+    Convert a color int to a color hex
+
+    >>> intToHex(1035767)
+    '0xfcdf7'
+    >>> intToHex(4515381)
+    '0x44e635'
+    >>> intToHex(16093455)
+    '0xf5910f'
+    """
     if not 0x0 <= i <= 0xFFFFFF:
         raise ValueError("Color value must be a 6-digit hex value.")
     return hex(i)
 
 
 def tupleToHex(t: tuple):
+    """
+    Convert a color int to a color hex
+
+    >>> tupleToHex((15, 205, 247))
+    '0xfcdf7'
+    >>> tupleToHex((68, 230, 53))
+    '0x44e635'
+    >>> tupleToHex((245, 145, 15))
+    '0xf5910f'
+    """
     return intToHex(tupleToInt(t))
 
 
 def sanitizeName(n: str):
+    """
+    Sanitize a string to use as a colour name
+
+    >>> sanitizeName("Red 1")
+    'RED_1'
+    """
     return n.upper().replace(" ", "_")
 
 
@@ -320,8 +381,8 @@ class Color:
         Create a Color object and add it to the global registry of colors.
 
         Example:
-        >>> Color(colorid = 256, name = "RED", value = 0xFF0000)
-        Color(colorid = 256, name = 'AWESOME', value = 0x0fcdf7)
+        >>> Color(colorid = 257, name = 'Awesome Sauce', value = 0x0fcdf7)
+        Color(colorid = 257, name = 'AWESOME_SAUCE', value = 0x0fcdf7)
 
         colorid and name must be unique for each Color.
         """
@@ -348,7 +409,7 @@ class Color:
         Return a 3-Tuple representing the R, G, and B values of the Color respectively, values 0-255 inclusive.
 
         Example:
-        >>> mycolor.rgb()
+        >>> mycolor.rgb
         (15, 205, 247)
         """
         return intToTuple(self.value)
@@ -359,7 +420,7 @@ class Color:
         Returns a String that is the colors name value, but formatted to look nice in output.
 
         Example:
-        >>> mycolor.prettyName()
+        >>> mycolor.prettyName
         'Awesome'
         """
         name = self.name
@@ -375,7 +436,7 @@ class Color:
         Returns an int representing the value of this Color, between 0x000000 and 0xFFFFFF, inclusive.
 
         Example:
-        >>> mycolor.value()
+        >>> mycolor.value
         1035767
         """
         return self._value
@@ -454,13 +515,13 @@ class Color:
         Takes a variety yof input types and turns them into the color value of the colors RGB.
 
         Examples:
-        >>> toColorInt(0xFFFFFF)
+        >>> Color.toColorInt(0xFFFFFF)
         16777215
-        >>> toColorInt("FFFFFF")
+        >>> Color.toColorInt("FFFFFF")
         16777215
-        >>> toColorInt((255, 255, 255))
+        >>> Color.toColorInt((255, 255, 255))
         16777215
-        >>> toColorInt(Color(256, "WHITE", 0xFFFFFF))
+        >>> Color.toColorInt(Color(258, "White Enough", 0xFFFFFF))
         16777215
         """
         if isinstance(color, int):
@@ -504,13 +565,8 @@ def loadDefaultColors():
 
     return AttrDict(Color._colors_by_name)
 
-
 """
-Is an AttrDict of a default, 256-color pattlete (based on https://jonasjacek.github.io/colors/)
+Is an AttrDict of a default, 256-color palette (based on https://jonasjacek.github.io/colors/)
 Because it's an AttrDict, this means you can do things like `colors.RED` and it will return the Color object for the default RED color.
 """
 colors = loadDefaultColors()
-
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod(extraglobs={'mycolor': Color(colorid = 256, name = "AWESOME", value = 0x0fcdf7)})
