@@ -672,3 +672,4 @@ Is a ColorRegistry of a default, 256-color palette (based on https://jonasjacek.
 Because it's an AttrDict, this means you can do things like `colors.RED` and it will return the Color object for the default RED color.
 """
 colors = ColorRegistry()
+default_colors = ColorRegistry.default_colors
