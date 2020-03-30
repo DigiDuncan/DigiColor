@@ -1,8 +1,6 @@
 import re
 from math import sqrt
 
-from digicolor.lib.utils import AttrDict
-
 default_colors = {
     "BLACK": 0x000000,
     "RED": 0x800000,
@@ -358,6 +356,33 @@ def tupleToHex(t: tuple):
     return intToHex(tupleToInt(t))
 
 
+def toColorInt(val):
+    """
+    Takes a variety yof input types and turns them into the color value of the colors RGB.
+
+    Examples:
+    >>> toColorInt(0xFFFFFF)
+    16777215
+    >>> toColorInt("FFFFFF")
+    16777215
+    >>> toColorInt((255, 255, 255))
+    16777215
+    >>> toColorInt(Color(258, "White Enough", 0xFFFFFF))
+    16777215
+    """
+    if isinstance(val, int):
+        if not 0x0 <= val <= 0xFFFFFF:
+            raise ValueError("Color value must be a 6-digit hex value.")
+        return val
+    if isinstance(val, str):
+        return hexToInt(val)
+    if isinstance(val, tuple):
+        return tupleToInt(val)
+    if isinstance(val, Color):
+        return val.value
+    return ValueError("Color type could not be identified.")
+
+
 def sanitizeName(n: str):
     """
     Sanitize a string to use as a colour name
@@ -368,13 +393,103 @@ def sanitizeName(n: str):
     return n.upper().replace(" ", "_")
 
 
+class ColorRegistry:
+    def __init__(self, color_dict = None):
+        self._colors_by_name = dict()
+        self._colors_by_id = dict()
+        self.registry = []
+
+        if color_dict is not None:
+            for colorid, (name, value) in enumerate(default_colors.items()):
+                self.add(colorid, name, value)
+
+    def clear(self):
+        self._colors_by_name = dict()
+        self._colors_by_id = dict()
+        self.registry = []
+
+    def add(self, *args, **kwargs):
+        color = Color(*args, **kwargs)
+
+        if color.colorid in self._colors_by_id:
+            raise ValueError(f"Color ID ({color.colorid}) already in use.")
+
+        if color.name in self._colors_by_name:
+            raise ValueError(f"Color name ({color.name}) already in use.")
+
+        self._colors_by_name[color.name] = color
+        self._colors_by_id[color.colorid] = color
+        self.registry.append(color)
+
+        return color
+
+    def remove(self, color):
+        """
+        Removes a color from the global registry of colors.
+
+        Example:
+        >>> blueish = colors.add(colorid = 259, name = 'Blueish', value = 0x810000)
+        >>> colors.remove(blueish)
+        """
+        del self._colors_by_id[color.colorid]
+        del self._colors_by_name[color.name]
+        self.registry.remove(color)
+
+    def fromID(self, colorid: int):
+        """
+        Return a Color based on its canonical ID in the global registry of colors.
+
+        Example:
+        >>> colors.fromID(1)
+        Color(colorid = 1, name = 'RED', value = 0x800000)
+        """
+        return self._colors_by_id[colorid]
+
+    def fromName(self, name: str):
+        """
+        Return a Color based on its canonical name in the global registry of colors.
+
+        Example:
+        >>> colors.fromName("RED")
+        Color(colorid = 1, name = 'RED', value = 0x800000)
+        """
+        return self._colors_by_name[sanitizeName(name)]
+
+    def getClosestColor(self, color):
+        """
+        Find the closest color in the registry to the one given.
+        Uses the algorithm found at https://stackoverflow.com/a/54242348.
+
+        Examples:
+        >>> colors.getClosestColor(0x00AA00)
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        >>> colors.getClosestColor("00AA00")
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        >>> colors.getClosestColor((0, 170, 0))
+        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
+        """
+        r, g, b = intToTuple(toColorInt(color))
+        color_diffs = []
+        for matchcolor in self.registry:
+            cr, cg, cb = matchcolor.rgb
+            color_diff = sqrt(abs(r - cr)**2 + abs(g - cg)**2 + abs(b - cb)**2)
+            color_diffs.append((color_diff, matchcolor))
+        return min(color_diffs)[1]
+
+    def __getattr__(self, name):
+        try:
+            return self._colors_by_name[name]
+        except KeyError:
+            raise AttributeError
+
+    def __iter__(self):
+        return iter(self._colors_by_id.items())
+
+
 class Color:
     """
     An object representing a color.
     """
-    _colors_by_name = dict()
-    _colors_by_id = dict()
-    registry = []
 
     def __init__(self, colorid: int, name: str, value: int):
         """
@@ -390,18 +505,8 @@ class Color:
         self._name = sanitizeName(name)
         self._value = value
 
-        if self.colorid in self._colors_by_id:
-            raise ValueError(f"Color ID ({self.colorid}) already in use.")
-
-        if self.name in self._colors_by_name:
-            raise ValueError(f"Color name ({self.name}) already in use.")
-
         if not 0x0 <= self.value <= 0xFFFFFF:
             raise ValueError("Color value must be a 6-digit hex value.")
-
-        self._colors_by_name[name] = self
-        self._colors_by_id[colorid] = self
-        self.registry.append(self)
 
     @property
     def rgb(self):
@@ -463,6 +568,16 @@ class Color:
         """
         return self._colorid
 
+    def toHex(self, hextype):
+        if hextype not in ["", "0x", "#"]:
+            raise ValueError("Hex type must be '', '0x', or '#'.")
+        if hextype == "":
+            return hex(self.value)[2:]
+        if hextype == "0x":
+            return hex(self.value)
+        if hextype == "#":
+            return "#" + hex(self.value)[2:]
+
     def remove(self):
         """
         Removes a color from the global registry of colors.
@@ -470,9 +585,7 @@ class Color:
         Example:
         >>> mycolor.remove()
         """
-        del self._colors_by_id[self.colorid]
-        del self._colors_by_name[self.name]
-        self.registry.remove(self)
+        colors.remove(self)
 
     def __str__(self):
         return self.name
@@ -487,86 +600,9 @@ class Color:
         goodhex = '0x' + hex(self.value)[2:].zfill(6)
         return (f"Color(colorid = {self.colorid}, name = {self.name!r}, value = {goodhex})")
 
-    @classmethod
-    def fromID(cls, colorid: int):
-        """
-        Return a Color based on its canonical ID in the global registry of colors.
-
-        Example:
-        >>> Color.fromID(1)
-        Color(colorid = 1, name = 'RED', value = 0x800000)
-        """
-        return cls._colors_by_id[colorid]
-
-    @classmethod
-    def fromName(cls, name: str):
-        """
-        Return a Color based on its canonical name in the global registry of colors.
-
-        Example:
-        >>> Color.fromName("RED")
-        Color(colorid = 1, name = 'RED', value = 0x800000)
-        """
-        return cls._colors_by_name[sanitizeName(name)]
-
-    @classmethod
-    def toColorInt(cls, color):
-        """
-        Takes a variety yof input types and turns them into the color value of the colors RGB.
-
-        Examples:
-        >>> Color.toColorInt(0xFFFFFF)
-        16777215
-        >>> Color.toColorInt("FFFFFF")
-        16777215
-        >>> Color.toColorInt((255, 255, 255))
-        16777215
-        >>> Color.toColorInt(Color(258, "White Enough", 0xFFFFFF))
-        16777215
-        """
-        if isinstance(color, int):
-            if not 0x0 <= color <= 0xFFFFFF:
-                raise ValueError("Color value must be a 6-digit hex value.")
-            return color
-        if isinstance(color, str):
-            return hexToInt(color)
-        if isinstance(color, tuple):
-            return tupleToInt(color)
-        if isinstance(color, Color):
-            return color.value
-        return ValueError("Color type could not be identified.")
-
-    @classmethod
-    def getClosestColor(cls, color):
-        """
-        Find the closest color in the registry to the one given.
-        Uses the algorithm found at https://stackoverflow.com/a/54242348.
-
-        Examples:
-        >>> Color.getClosestColor(0x00AA00)
-        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
-        >>> Color.getClosestColor("00AA00")
-        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
-        >>> Color.getClosestColor((0, 170, 0))
-        Color(colorid = 34, name = 'GREEN_3A', value = 0x00af00)
-        """
-        r, g, b = intToTuple(cls.toColorInt(color))
-        color_diffs = []
-        for matchcolor in cls.registry:
-            cr, cg, cb = matchcolor.rgb
-            color_diff = sqrt(abs(r - cr)**2 + abs(g - cg)**2 + abs(b - cb)**2)
-            color_diffs.append((color_diff, matchcolor))
-        return min(color_diffs)[1]
-
-
-def loadDefaultColors():
-    for colorid, (name, value) in enumerate(default_colors.items()):
-        Color(colorid, name, value)
-
-    return AttrDict(Color._colors_by_name)
 
 """
-Is an AttrDict of a default, 256-color palette (based on https://jonasjacek.github.io/colors/)
+Is a ColorRegistry of a default, 256-color palette (based on https://jonasjacek.github.io/colors/)
 Because it's an AttrDict, this means you can do things like `colors.RED` and it will return the Color object for the default RED color.
 """
-colors = loadDefaultColors()
+colors = ColorRegistry(default_colors)
