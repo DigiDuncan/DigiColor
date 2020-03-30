@@ -568,6 +568,16 @@ class Color:
         """
         return self._colorid
 
+    def toHex(self, hextype):
+        if hextype not in ["", "0x", "#"]:
+            raise ValueError("Hex type must be '', '0x', or '#'.")
+        if hextype == "":
+            return hex(self.value)[2:]
+        if hextype == "0x":
+            return hex(self.value)
+        if hextype == "#":
+            return "#" + hex(self.value)[2:]
+
     def remove(self):
         """
         Removes a color from the global registry of colors.
@@ -591,10 +601,8 @@ class Color:
         return (f"Color(colorid = {self.colorid}, name = {self.name!r}, value = {goodhex})")
 
 
-colors = ColorRegistry(default_colors)
-
-
 """
-Is an AttrDict of a default, 256-color palette (based on https://jonasjacek.github.io/colors/)
+Is a ColorRegistry of a default, 256-color palette (based on https://jonasjacek.github.io/colors/)
 Because it's an AttrDict, this means you can do things like `colors.RED` and it will return the Color object for the default RED color.
 """
+colors = ColorRegistry(default_colors)
