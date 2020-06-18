@@ -519,7 +519,7 @@ class ColorRegistry:
         try:
             return self._colors_by_name[name]
         except KeyError:
-            raise AttributeError(f"{self.__class__.__name!r} object has no attribute {name!r}")
+            raise AttributeError(f"{self.__class__.__name__!r} object has no attribute {name!r}")
 
     def __iter__(self):
         return iter(self._colors_by_id.items())
